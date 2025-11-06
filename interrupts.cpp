@@ -14,6 +14,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
     std::string execution = "";  //!< string to accumulate the execution output
     std::string system_status = "";  //!< string to accumulate the system status output
     int current_time = time;
+    int activityTime = 40;
 
     //parse each line of the input trace file. 'for' loop to keep track of indices.
     for(size_t i = 0; i < trace_file.size(); i++) {
@@ -29,8 +30,11 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             execution += intr;
             current_time = time;
 
-            execution += std::to_string(current_time) + ", " + std::to_string(delays[duration_intr]) + ", SYSCALL ISR (ADD STEPS HERE)\n";
+            execution += std::to_string(current_time) + ", " + std::to_string(delays[duration_intr]) + ", SYSCALL ISR\n";
             current_time += delays[duration_intr];
+            execution += std::to_string(current_time) + ", " + std::to_string(activityTime)
+                      + ", handle END_IO for device " + std::to_string(duration_intr) + "\n";
+            current_time += activityTime;
 
             execution +=  std::to_string(current_time) + ", 1, IRET\n";
             current_time += 1;
@@ -39,8 +43,24 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             current_time = time;
             execution += intr;
 
-            execution += std::to_string(current_time) + ", " + std::to_string(delays[duration_intr]) + ", ENDIO ISR(ADD STEPS HERE)\n";
+            execution += std::to_string(current_time) + ", " + std::to_string(delays[duration_intr]) + ", ENDIO ISR\n";
             current_time += delays[duration_intr];
+            execution += std::to_string(current_time) + ", " + std::to_string(activityTime)
+                      + ", execute ISR body for device " + std::to_string(duration_intr) + "\n";
+            current_time += activityTime;
+
+            // Simulate I/O device operation using device delay
+            int isr_delay = 0;
+            if (duration_intr < (int)delays.size()) {
+                isr_delay = delays[duration_intr];
+            } else {
+                std::cerr << "Warning: Device " << duration_intr << " not found in device_table.txt, using 100ms default.\n";
+                isr_delay = 100;
+            }
+
+            execution += std::to_string(current_time) + ", " + std::to_string(isr_delay)
+                      + ", device " + std::to_string(duration_intr) + " I/O operation\n";
+            current_time += isr_delay;
 
             execution +=  std::to_string(current_time) + ", 1, IRET\n";
             current_time += 1;
@@ -96,14 +116,15 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
                     child_trace.push_back(trace_file[j]);
                 }
             }
+            free_memory(&copy);
             i = parent_index;
             ///////////////////////////////////////////////////////////////////////////////////////////
             //With the child's trace, run the child (HINT: think recursion)
             auto [exec, stat, childtime] = simulate_trace(child_trace, current_time, vectors, delays, external_files, copy, wait_queue);
             execution += exec;
-            system_status += stat;
+            system_status += "\n" + stat;
             current_time = childtime;
-            free_memory(&copy);
+            
             wait_queue.erase(wait_queue.begin()+(copy.PID));
             ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -181,7 +202,6 @@ int main(int argc, char** argv) {
     
     /******************ADD YOUR VARIABLES HERE*************************/
     int currentTime = 0;
-
     /******************************************************************/
 
     //Converting the trace file into a vector of strings.
