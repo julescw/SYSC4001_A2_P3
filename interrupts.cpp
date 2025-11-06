@@ -50,17 +50,17 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             current_time = time;
             ///////////////////////////////////////////////////////////////////////////////////////////
             //Add your FORK output here
-            PCB copy(wait_queue.size(), -1, "init", 1, -1);
+            PCB copy(wait_queue.size(), -1, current.program_name, current.size, -1);
             if(!allocate_memory(&copy)){
                 std::cerr << "ERROR! Memory allocation failed!" << std::endl;
             }
             wait_queue.push_back(current);
-            execution += std::to_string(current_time) + ", 10, cloning the PCB\n";
-            current_time += 10;
+            execution += std::to_string(current_time) + ", "+ std::to_string(duration_intr) +", cloning the PCB\n";
+            current_time += duration_intr;
             execution += std::to_string(current_time) + ", 0, scheduler called\n";
             execution += std::to_string(current_time) + ", 1, IRET\n";
             current_time += 1;
-            system_status += "time: " + std::to_string(current_time) + "; current trace: FORK, 10\n";
+            system_status += "time: " + std::to_string(current_time) + "; current trace: FORK, " + std::to_string(duration_intr) + "\n";
             system_status += print_PCB(copy, wait_queue);
             ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -104,7 +104,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             system_status += stat;
             current_time = childtime;
             free_memory(&copy);
-            wait_queue.clear();
+            wait_queue.erase(wait_queue.begin()+(copy.PID));
             ///////////////////////////////////////////////////////////////////////////////////////////
 
         } else if(activity == "EXEC") {
@@ -129,7 +129,7 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             if(!allocate_memory(&program)){
                 std::cerr << "ERROR! Memory allocation failed!" << std::endl;
             }
-            system_status += "time: " + std::to_string(current_time) + "; current trace: EXEC "+ program_name + ", 10\n";
+            system_status += "time: " + std::to_string(current_time) + "; current trace: EXEC "+ program_name + ", " +std::to_string(duration_intr) + "\n";
             system_status += print_PCB(program, wait_queue) + "\n";
             ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -181,6 +181,7 @@ int main(int argc, char** argv) {
     
     /******************ADD YOUR VARIABLES HERE*************************/
     int currentTime = 0;
+
     /******************************************************************/
 
     //Converting the trace file into a vector of strings.
